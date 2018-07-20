@@ -1,92 +1,100 @@
-# Unscented Kalman Filter Project Starter Code
-Self-Driving Car Engineer Nanodegree Program
+# UKF -Unscented Kalman Filters in C++
+Udacity CarND Term 2, Project 2 - Unscented Kalman Filters
 
-In this project utilize an Unscented Kalman Filter to estimate the state of a moving object of interest with noisy lidar and radar measurements. Passing the project requires obtaining RMSE values that are lower that the tolerance outlined in the project rubric. 
+## Project Basics
+The main goal of the project is to apply Unscented Kalman Filter to fuse data from Lidar and Radar sensors of a self driving car using C++. The code will make a prediction based on the sensor measurement and then update the expected position.
 
-This project involves the Term 2 Simulator which can be downloaded [here](https://github.com/udacity/self-driving-car-sim/releases)
-
-This repository includes two files that can be used to set up and intall [uWebSocketIO](https://github.com/uWebSockets/uWebSockets) for either Linux or Mac systems. For windows you can use either Docker, VMware, or even [Windows 10 Bash on Ubuntu](https://www.howtogeek.com/249966/how-to-install-and-use-the-linux-bash-shell-on-windows-10/) to install uWebSocketIO. Please see [this concept in the classroom](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/16cf4a78-4fc7-49e1-8621-3450ca938b77) for the required version and installation scripts.
-
-Once the install for uWebSocketIO is complete, the main program can be built and ran by doing the following from the project top directory.
-
-1. mkdir build
-2. cd build
-3. cmake ..
-4. make
-5. ./UnscentedKF
-
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
-
-Note that the programs that need to be written to accomplish the project are src/ukf.cpp, src/ukf.h, tools.cpp, and tools.h
-
-The program main.cpp has already been filled out, but feel free to modify it.
-
-Here is the main protcol that main.cpp uses for uWebSocketIO in communicating with the simulator.
-
-
-INPUT: values provided by the simulator to the c++ program
-
-["sensor_measurement"] => the measurment that the simulator observed (either lidar or radar)
-
-
-OUTPUT: values provided by the c++ program to the simulator
-
-["estimate_x"] <= kalman filter estimated position x
-["estimate_y"] <= kalman filter estimated position y
-["rmse_x"]
-["rmse_y"]
-["rmse_vx"]
-["rmse_vy"]
-
----
-
-## Other Important Dependencies
-* cmake >= 3.5
-  * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1 (Linux, Mac), 3.81 (Windows)
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools](https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
+See the starter code from Udacity Project 
+[Starter Code](https://github.com/udacity/CarND-Unscented-Kalman-Filter-Project)
 
 ## Basic Build Instructions
-
 1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./UnscentedKF` Previous versions use i/o from text files.  The current state uses i/o
-from the simulator.
+2. Make a build directory: mkdir build && cd build
+3. Compile: cmake .. && make
+	On windows, you may need to run: cmake .. -G "Unix Makefiles" && make
+4. Run it: ./UnscentedKF
 
-## Editor Settings
+## Contents of Repository
+- src dir
+	1. main.cpp - communicates with the Term 2 Simulator receiving data measurements, calls a function to run the Kalman filter, calls a function to calculate RMSE
+	2. ukf.cpp -  initializes the Unscented Kalman filter, calls the predict and update function, defines the predict and update functions.
+	4. tools.cpp- function to calculate RMSE and the Jacobian matrix
+- data - a directory with one input file, provided by Udacity
+- results - a directory with output and log files
+- Docs - a directory with files formats description
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+## Project Model & Approach
+In this project, I used a "constant turn rate and velocity magnitude" (CTRV) process model to carry out the Kalman filter's predict steps. The CTRV tracks a state vector of 5 quantities: x position, y position, velocity magnitude, yaw angle, and yaw rate. To predict the position from the time of the old measurement to the time of the current measurement, the velocity magnitude and yaw rate are assumed to be constant; however, a random linear (in the direction of the velocity) acceleration and yaw acceleration are assumed to exist at each time interval. Both accelerations are uncorrelated with a mean of zero and a constant variance.
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+Part of this project was choosing the hardcoded variance of the random linear and yaw rate accelerations applied during the predict step. The chosen values should be physically reasonable (i.e., a bike or car will not abruptly accelerate at 100 m/s^2, so the variance should be significantly less than 100^2). A good way to check if the noise values are physically reasonable is to use the "normalized information squared" or NIS statistic. If our chosen variances used in the prediction step are consistent with physical reality, the NIS values computed from the radar measurements should roughly obey a chi-square distribution with degrees of freedom equal to the dimension of the radar measurement space (3). A concrete heuristic way to check this is to plot the NIS statistic for the radar or lidar measurements along with the corresponding 95% confidence threshold of the chi-square distribution, which is 7.82 for 3 degrees of freedom (radar) and 5.991 for 2 degrees of freedom (lidar). If our noise is consistent, we should see roughly 95% of NIS values computed from measurements fall below that confidence threshold, which appears just about right for my chosen process noise variances (4 m^s/s^4 for the linear acceleration and 0.5 rad^2/s^4 for the yaw rate acceleration):
 
-## Code Style
+## Results
+Using one set of simulated run (dataset 1), Unscented Kalman Filter produces the below results. The x-position is shown as 'px', y-position as 'py', velocity in the x-direction is 'vx', while velocity in the y-direction is 'vy'.
 
-Please stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html) as much as possible.
+The graphs are created below using **ukf-visualization.ipynb** provided by [Mercedes Sensor Fusion Utilities](https://github.com/udacity/CarND-Mercedes-SF-Utilities)
+This is done by logging the data in an output.txt file when running the prject with simulator.
+Format of the logged data is prsenet in following sequence: ['px_est','py_est','vx_est','vy_est','px_meas','py_meas','px_gt','py_gt','vx_gt','vy_gt'].
+This is then observed using **ukf-visualization.ipynb**.
 
-## Generating Additional Data
+NIS Values are observed using NIS.py file.
 
-This is optional!
+Threshold RMSE <= [.09, .10, .40, .30].
 
-If you'd like to generate your own radar and lidar data, see the
-[utilities repo](https://github.com/udacity/CarND-Mercedes-SF-Utilities) for
-Matlab scripts that can generate additional data.
+### 1. Laser-Radar Combined 
+Set following compiler switches to:
 
-## Project Instructions and Rubric
+ONLY_LASER 0
+_ _ _
 
-This information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/c3eb3583-17b2-4d83-abf7-d852ae1b9fff/concepts/f437b8b0-f2d8-43b0-9662-72ac4e4029c1)
-for instructions and the project rubric.
+ONLY_RADAR 0
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+#### 1. Dataset 1
+![Laser-Radar-Output-Dataset1](https://github.com/vikasmalik22/UKF/blob/master/results/ukf_combined_output.png)
 
+Accuracy - RMSE [0.0727, 0.0819, 0.3019, 0.2810]
+![Accuracy - RMSE](https://github.com/vikasmalik22/UKF/blob/master/results/rmse_combined_dataset1.PNG)
+
+[ukf_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/combined_output.txt)
+
+[NIS Radar](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_combined.png)
+
+[NIS Lidar](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_combined.png)
+
+### 2. Lidar Only
+
+Set following compiler switches to:
+
+ONLY_LASER 1
+_ _ _
+
+ONLY_RADAR 0
+
+![Lidar-Output-Dataset1](https://github.com/vikasmalik22/UKF/blob/master/results/ukf_lidar_output.png)
+
+Accuracy - RMSE [0.102878, 0.09486, 0.5474, 0.2910]
+
+[ukf lidar_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/laser_only_output.txt)
+
+[UKF NIS Lidar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_only.png)
+
+### 3. Radar Only
+
+Set following compiler switches to:
+
+ONLY_LASER 0
+_ _ _
+
+ONLY_RADAR 1
+
+#### 1. Dataset 1
+![Radar-Output-Dataset1](https://github.com/vikasmalik22/UKF/blob/master/results/ukf_radar_output.png)
+
+Accuracy - RMSE [0.1643, 0.2625, 0.4091, 0.3546]
+
+[ukf radar_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/radar_only_output.txt)
+
+[UKF NIS Radar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_only.png)
+
+
+## Observation
+From the above results (RMSE values), Lidar data seems to provide more accurate positining readings (px, py) than Radar. Whereas, Radar provides a bit more accurate velocity readings than Lidar. Combining both of them strengthens the UKF algorithm to predict the position & velocity more precisely.
