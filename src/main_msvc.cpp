@@ -4,11 +4,20 @@
 #include <math.h>
 #include "ukf.h"
 #include "tools.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 using namespace std;
 
 // for convenience
 using json = nlohmann::json;
+
+//Both the switches shouldn't be Turned On together
+//If both are set to 0 measurements are considered for both Laser and Radar
+//If 1 is set only the measurement of particular Laser or radar is taken
+#define ONLY_LASER 0
+#define ONLY_RADAR 0
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -37,8 +46,11 @@ int main()
   Tools tools;
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
-
-  h.onMessage([&ukf,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+#ifdef UWS_VCPKG
+	h.onMessage([&ukf, &tools, &estimations, &ground_truth](uWS::WebSocket<uWS::SERVER> *ws, char *data, size_t length, uWS::OpCode opCode) {
+#else
+	h.onMessage([ukf, &tools, &estimations, &ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+#endif
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -86,10 +98,17 @@ int main()
           		iss >> ro;
           		iss >> theta;
           		iss >> ro_dot;
-          		meas_package.raw_measurements_ << ro,theta, ro_dot;
+          		meas_package.raw_measurements_ << ro, theta, ro_dot;
           		iss >> timestamp;
           		meas_package.timestamp_ = timestamp;
           }
+					json msgJson;
+#if defined(ONLY_LASER) && (ONLY_LASER == 1)
+					if (sensor_type.compare("L") == 0)
+#elif defined(ONLY_RADAR) && (ONLY_RADAR == 1)
+					if (sensor_type.compare("R") == 0)
+#endif
+					{
           float x_gt;
     	  float y_gt;
     	  float vx_gt;
@@ -117,8 +136,8 @@ int main()
     	  double v  = ukf.x_(2);
     	  double yaw = ukf.x_(3);
 
-    	  double v1 = cos(yaw)*v;
-    	  double v2 = sin(yaw)*v;
+		  double v1 = cos(yaw)*v;
+		  double v2 = sin(yaw)*v;
 
     	  estimate(0) = p_x;
     	  estimate(1) = p_y;
@@ -129,22 +148,72 @@ int main()
 
     	  VectorXd RMSE = tools.CalculateRMSE(estimations, ground_truth);
 
-          json msgJson;
+						ofstream out_file_("output.txt", ios::out | ios::app);
+
+						//Logging the data in ouput.txt file for Visualization
+						// output the estimation
+						out_file_ << p_x << "\t";
+						out_file_ << p_y << "\t";
+						out_file_ << v1 << "\t";
+						out_file_ << v2 << "\t";
+
+						// output the measurements
+						if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+							// output the estimation
+							out_file_ << meas_package.raw_measurements_(0) << "\t";
+							out_file_ << meas_package.raw_measurements_(1) << "\t";
+						}
+						else if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+							// output the estimation in the cartesian coordinates
+							float ro = meas_package.raw_measurements_(0);
+							float phi = meas_package.raw_measurements_(1);
+							out_file_ << ro * cos(phi) << "\t"; // p1_meas
+							out_file_ << ro * sin(phi) << "\t"; // ps_meas
+						}
+
+						// output the ground truth packages
+						out_file_ << x_gt << "\t";
+						out_file_ << y_gt << "\t";
+						out_file_ << vx_gt << "\t";
+						out_file_ << vy_gt << "\n";
+						out_file_.close();
           msgJson["estimate_x"] = p_x;
           msgJson["estimate_y"] = p_y;
           msgJson["rmse_x"] =  RMSE(0);
           msgJson["rmse_y"] =  RMSE(1);
           msgJson["rmse_vx"] = RMSE(2);
           msgJson["rmse_vy"] = RMSE(3);
+					}
+#if defined(ONLY_LASER) || defined(ONLY_RADAR)
+#if (ONLY_LASER == 1 || ONLY_RADAR == 1)
+					else
+					{						
+						msgJson["estimate_x"] = 0;
+						msgJson["estimate_y"] = 0;
+						msgJson["rmse_x"] = 0;
+						msgJson["rmse_y"] = 0;
+						msgJson["rmse_vx"] = 0;
+						msgJson["rmse_vy"] = 0;
+					}
+#endif
+#endif
           auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
+#ifdef UWS_VCPKG
+					ws->send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+#else
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-	  
+#endif
+				}
         }
-      } else {
+			else {
         
         std::string msg = "42[\"manual\",{}]";
+#ifdef UWS_VCPKG
+				ws->send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+#else
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+#endif
       }
     }
 
@@ -165,17 +234,32 @@ int main()
     }
   });
 
+#ifdef UWS_VCPKG
+	h.onConnection([&h](uWS::WebSocket<uWS::SERVER> *ws, uWS::HttpRequest req) {
+		std::cout << "Connected!!!" << std::endl;
+#else
   h.onConnection([&h](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
     std::cout << "Connected!!!" << std::endl;
+#endif
   });
 
+#ifdef UWS_VCPKG
+	h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> *ws, int code, char *message, size_t length) {
+		ws->close();
+		std::cout << "Disconnected" << std::endl;
+#else
   h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) {
     ws.close();
     std::cout << "Disconnected" << std::endl;
+#endif
   });
 
   int port = 4567;
+#ifdef UWS_VCPKG  
+	if (h.listen("127.0.0.1", port))
+#else
   if (h.listen(port))
+#endif
   {
     std::cout << "Listening to port " << port << std::endl;
   }
@@ -186,90 +270,3 @@ int main()
   }
   h.run();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
