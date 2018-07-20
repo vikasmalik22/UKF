@@ -119,7 +119,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
 			*/
 			double rho = meas_package.raw_measurements_[0];
 			double phi = meas_package.raw_measurements_[1];
-			double rho_dot = meas_package.raw_measurements_[2];
 			double px = rho * cos(phi);
 			double py = rho * sin(phi);
 			x_ << px, py, 1, 1, 1;
