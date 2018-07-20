@@ -56,9 +56,9 @@ Accuracy - RMSE [0.0727, 0.0819, 0.3019, 0.2810]
 
 [ukf_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/combined_output.txt)
 
-[NIS Radar](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_combined.png)
+![NIS Radar](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_combined.png)
 
-[NIS Lidar](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_combined.png)
+![NIS Lidar](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_combined.png)
 
 ### 2. Lidar Only
 
@@ -75,7 +75,7 @@ Accuracy - RMSE [0.102878, 0.09486, 0.5474, 0.2910]
 
 [ukf lidar_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/laser_only_output.txt)
 
-[UKF NIS Lidar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_only.png)
+![UKF NIS Lidar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Laser_NIS_only.png)
 
 ### 3. Radar Only
 
@@ -93,7 +93,7 @@ Accuracy - RMSE [0.1643, 0.2625, 0.4091, 0.3546]
 
 [ukf radar_output1.txt](https://github.com/vikasmalik22/UKF/blob/master/results/radar_only_output.txt)
 
-[UKF NIS Radar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_only.png)
+![UKF NIS Radar Only](https://github.com/vikasmalik22/UKF/blob/master/results/Radar_NIS_only.png)
 
 
 ## Observation
